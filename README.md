@@ -4,7 +4,7 @@ CTRL (Controllable) SIMP (Text simplification) is medical text simplification mo
 
 CTRL-SIMP is built on top of T5, similar to MACAW. Unlike MACAW the training data has both inputs split into slots and inputs with inplace annotations.
 
-Make edits to training.py to indicate the correct model path, data path and CUDA devices. The data is uploaded in google drive. 
+The model was trained with python version 3.8.10 and torch 1.10 (cu-11.3). The data is uploaded in google drive Toloka/annotated_data. 
 The model using T5-large was trained on two CUDA devices (GeForce RX 3080 each) and with T5-small was trained on one CUDA device.
 
 To train the model:
