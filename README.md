@@ -10,6 +10,11 @@ The model using T5-large was trained on two CUDA devices (GeForce RX 3080 each) 
 To train the model:
 * make appropriate changes to the data path, model path and CUDA devices
 * make sure NLTK and pandas installations are working
-* run training.py
+* run training.py 
+
+Model arguments:
+* --ip_ann: bool, default = True, include in place annotated data Sa and Ea
+* --one_slot: bool, default = False, train only on in place annotated data (Ea->Sa)
+* --shuffle: bool, default = True, shuffle training data to avoid the same examples in one batch
 
 The evaluation functions are in model.py.
