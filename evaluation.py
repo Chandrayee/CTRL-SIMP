@@ -44,7 +44,7 @@ def testing_run_macaw(eval_data):
         res = run_macaw(input, outputs, model_dict=model_dict)
         print([x['output_raw'] for x in res['explicit_outputs']])
         print(res['output_slots_list'])
-        
+
 def create_batch_for_generation(eval_data):
     batch_instances = []
     for input, outputs in eval_data:
@@ -102,7 +102,7 @@ def batch_for_conditional_gen_merged_outputs(eval_data):
         instance['true_output_text'] = output_text
         batch_instances.append(instance)
     return batch_instances
-    
+
 
 def run_batch_generation(model, tokenizer, cuda_device, generator_options, batch_instances):
     all_res = run_generate(model, tokenizer, cuda_device, generator_options, batch_instances)
@@ -111,13 +111,15 @@ def run_batch_generation(model, tokenizer, cuda_device, generator_options, batch
 def rouge(output, gen):
     scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
     scores = scorer.score(output, gen)
-    return scores
+    rouge = (scores['rouge1'].fmeasure, scores['rougeL'].fmeasure)
+    return rouge
 
 def compute_rouge(ar1, ar2):
     rouges = []
     for output, gen in zip(ar1, ar2):
         rouges.append(rouge(output, gen))
-        
+    return rouges
+
 def compute_diff(ar1, ar2):
     seq_mat = difflib.SequenceMatcher()
     diff = []
@@ -128,38 +130,40 @@ def compute_diff(ar1, ar2):
         ratio.append(seq_mat.ratio())
         diff.append(get_replacement(output, gen))
     return diff, ratio
-        
+
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--chkpt', type = int, default = 1)
     args = parser.parse_args()
-    model_path = './models/merged_outputs/exc_EaSa/model_' + str(args.chkpt) + '.hf'
+    model_path = '../models/models_exc_EaSa_merged_outputs/model_' + str(args.chkpt) + '.hf'
     tokenizer_path = 't5-small'
     model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0])
-    
-    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/annotated_data.csv")
+
+    crowdsourced_data = pd.read_csv("../annotated_data.csv")
     crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
     textpairs = [[x,y] for x,y in zip(crowdsourced_data['Expert'], crowdsourced_data['Annotation'])]
-    
+
     eval_data = textpairs[-31:]
     print("There are {} eval text pairs".format(len(eval_data)))
     eval_pairs, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(eval_data, eval=True)
-    
+
     eval_data = get_eval_data(eval_pairs, slots_eval, all_annotations_eval, in_place_annotation=False)
     batch_instances = batch_for_conditional_gen_merged_outputs(eval_data)
     all_res = run_batch_generation(model_dict['model'], model_dict['tokenizer'], model_dict['cuda_device'],GENERATOR_OPTIONS_DEFAULT, batch_instances)
-    
+
     #testing_run_macaw(eval_data)
     #batch_instances = create_batch_for_generation(eval_data)
     #eval = run_evaluation(eval_pairs, slots_eval, all_annotations_eval, model_dict)
-    
+
     outputs = []
     true_outputs = []
     inputs = []
     angles = []
-    metrics_rouge = []
+    #metrics_rouge = []
+    metrics_rouge1 = []
+    metrics_rougeL = []
     metrics_diff = []
     for res in all_res:
         #print(res)
@@ -173,16 +177,21 @@ if __name__ == '__main__':
             diff, ratio = compute_diff(res['true_output_text'], raw_generated)
         else:
             print("Some slot is skipped in generation, it is a failure.")
-            rouges = 0
+            rouges = [(0,0)]
             diff = -1
             ratio = -1
+
         print('text_diff: ', (diff, ratio))
-        metrics_rouge.append(rouges)
+        print('rouges: ', rouges)
+        #metrics_rouge.append(rouges)
+        metrics_rouge1.append([x for (x,_) in rouges])
+        metrics_rougeL.append([x for (_,x) in rouges])
         metrics_diff.append((diff, ratio))
         inputs.append(res['input'])
         true_outputs.append(res['true_output'])
         outputs.append(res['output_raw_list'])
         angles.append(res['angle'])
-        
-    #df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs})
-    #df.to_csv('eval_exc_EaSa.csv', index=False)        
+
+    #    df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, "text_diff_ratio":[v for (_,v) in metrics_diff], "rouge":metrics_rouge})
+    df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, "text_diff_ratio":[v for (_,v) in metrics_diff], "rouge1-fmeasure":metrics_rouge1, "rougeL-fmeasure":metrics_rougeL})
+    df.to_csv('../eval_exc_EaSa.csv', index=False)
