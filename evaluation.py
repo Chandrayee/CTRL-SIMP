@@ -161,37 +161,55 @@ if __name__ == '__main__':
     true_outputs = []
     inputs = []
     angles = []
-    #metrics_rouge = []
-    metrics_rouge1 = []
-    metrics_rougeL = []
-    metrics_diff = []
+    #metrics_rouge1 = []
+    #metrics_rougeL = []
+    metrics_diff_GTE_GTS = []
+    metrics_diff_GTE_OPS = []
+    metrics_diff = [] # GT_OP
+
     for res in all_res:
         #print(res)
-        print('\n\n')
-        print(len(res['true_output_text']), len(res['output_slots_list'][0]))
+        #print("\n\n")
+        GTE = [i.split("=")[-1] for i in res['input'].split(";") if i.startswith((' $expert$ = ', '$expert$ = '))]
+        GTS = [i.split("=")[-1] for i in res['true_output'].split(";") if i.startswith((' $simple$ = ', '$simple$ = '))]
+        #print(len(res['true_output_text']), len(res['output_slots_list'][0]))
+
         if len(res['true_output_text'])==len(res['output_slots_list'][0]):
             raw_generated = [v for _, v in res['output_slots_list'][0].items()]
-            print(raw_generated)
-            print(res['true_output_text'])
-            rouges = compute_rouge(res['true_output_text'], raw_generated)
+            OPS = [res['output_slots_list'][0]['simple']]
+            #print(raw_generated)
+            #print(res['true_output_text'])
+            #rouges = compute_rouge(res['true_output_text'], raw_generated)
+            diff_GTE_OPS, ratio_GTE_OPS = compute_diff(GTE, OPS)
             diff, ratio = compute_diff(res['true_output_text'], raw_generated)
         else:
             print("Some slot is skipped in generation, it is a failure.")
             rouges = [(0,0)]
             diff = -1
             ratio = -1
+            diff_GTE_OPS, ratio_GTE_OPS = -1, -1
 
-        print('text_diff: ', (diff, ratio))
-        print('rouges: ', rouges)
+        diff_GTE_GTS, ratio_GTE_GTS = compute_diff(GTE, GTS)
+        print('text_diff_GTE_GTS: ', (diff_GTE_GTS, ratio_GTE_GTS))
+        print("\n\n")
+        metrics_diff_GTE_GTS.append((diff_GTE_GTS, ratio_GTE_GTS))
+
+        print('text_diff_GTE_OPS: ', (diff_GTE_OPS, ratio_GTE_OPS))
+        print("\n\n")
+        metrics_diff_GTE_OPS.append((diff_GTE_OPS, ratio_GTE_OPS))
+        #print('rouges: ', rouges)
         #metrics_rouge.append(rouges)
-        metrics_rouge1.append([x for (x,_) in rouges])
-        metrics_rougeL.append([x for (_,x) in rouges])
+        #metrics_rouge1.append([x for (x,_) in rouges])
+        #metrics_rougeL.append([x for (_,x) in rouges])
+        print('text_diff: ', (diff, ratio))
+        print("\n\n")
         metrics_diff.append((diff, ratio))
+
         inputs.append(res['input'])
         true_outputs.append(res['true_output'])
         outputs.append(res['output_raw_list'])
         angles.append(res['angle'])
 
-    #    df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, "text_diff_ratio":[v for (_,v) in metrics_diff], "rouge":metrics_rouge})
-    df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, "text_diff_ratio":[v for (_,v) in metrics_diff], "rouge1-fmeasure":metrics_rouge1, "rougeL-fmeasure":metrics_rougeL})
+    #    df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, "text_diff_ratio":[v for (_,v) in metrics_diff], "rouge1-fmeasure":metrics_rouge1, "rougeL-fmeasure":metrics_rougeL})
+    df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, "text_diff_GTE_GTS": [x for (x,_) in metrics_diff_GTE_GTS], "text_diff_ratio_GTE_GTS": [x for (_,x) in metrics_diff_GTE_GTS], "text_diff_gen": [x for (x,_) in metrics_diff], "text_diff_ratio_gen": [x for (_,x) in metrics_diff], "text_diff_GTE_OPS": [x for (x,_) in metrics_diff_GTE_OPS], "text_diff_ratio_GTE_OPS": [x for (_,x) in metrics_diff_GTE_OPS]})
     df.to_csv('../eval_exc_EaSa.csv', index=False)
