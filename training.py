@@ -145,12 +145,12 @@ def test_merged_outputs(training_pairs, shuffle = True, in_place_annotation = Fa
         
         
         
-def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, eval_pairs, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=5):
+def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, eval_pairs, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=30):
     print("Running model with merged inputs")
     optimizer = torch.optim.AdamW(model.parameters(), lr=8e-6)
     for epoch in range(num_epochs):
         epoch_loss = []
-        gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = 4, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
+        gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = 16, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
         data_per_batch = defaultdict(dict)
         with torch.autograd.set_detect_anomaly(True):
             for i, batch in enumerate(gen):
@@ -231,7 +231,7 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
             'loss': average_loss,
             }, PATH)'''
 
-        model.save_pretrained('./models/t5_small/merged_outputs/exc_EaSa_alt_input_format/model_'+str(epoch)+'.hf')
+        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/model_'+str(epoch)+'.hf')
         
 def print_data(all_inputs, all_outputs, all_annotations, slots):
     for i, val in slots.items():
@@ -274,25 +274,25 @@ if __name__ == '__main__':
     train_file = pd.read_csv("./Datasets/annotated_data/train_data.csv", encoding='unicode_escape',engine='python')
     train_file = train_file.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
     training_data = [[x,y,z] for x,y,z in zip(train_file['Expert'], train_file['Simple'], train_file['Annotation'])]
-    training_data = training_data[:16]
+    #training_data = training_data[:16]
     print("There are {} training text pairs".format(len(training_data)))
     training_data, all_inputs_train, all_outputs_train, all_annotations_train, slots_train = load_data(training_data, eval=True, single_angle=True)
     all_inputs_train, all_outputs_train, all_annotations_train, slots_train = post_processing_single_angle(all_inputs_train, all_outputs_train, all_annotations_train, slots_train, simplify=False)
-    print_data(all_inputs_train, all_outputs_train, all_annotations_train, slots_train)
+    #print_data(all_inputs_train, all_outputs_train, all_annotations_train, slots_train)
 
 
     dev_file = pd.read_csv("./Datasets/annotated_data/dev_data.csv", encoding='unicode_escape',engine='python')
     dev_file = dev_file.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
     dev_data = [[x,y,z] for x,y,z in zip(dev_file['Expert'], dev_file['Simple'], dev_file['Annotation'])]
-    dev_data = dev_data[:4]
+    #dev_data = dev_data[:4]
     print("There are {} eval text pairs".format(len(dev_data)))
     eval_data, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(dev_data, eval=True, single_angle=True)
     all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = post_processing_single_angle(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval, simplify=False)
-    print_data(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval)
+    #print_data(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval)
 
 
-    DEFAULT_RESULTS_DIR = './results/t5_small/merged_outputs/exc_EaSa_alt_input_format'
-    model_dict = load_model(model_name_or_path="t5-small", tokenizer_path="t5-small", cuda_devices = [0])
+    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle'
+    model_dict = load_model(model_name_or_path="t5-large", tokenizer_path="t5-large", cuda_devices = [0, 1])
 
     #test_merged_outputs(training_data)
     
