@@ -1,7 +1,7 @@
 from collections import defaultdict
 import re
 import random
-from preprocessing import load_data
+from preprocessing import load_data, post_processing_single_angle
 from automatic_annotation import get_replacement
 from model import model_input_format, load_model, run_model, run_model_with_outputs, get_eval_data, run_macaw, run_generate
 import torch
@@ -14,6 +14,10 @@ import argparse
 import textwrap
 from rouge_score import rouge_scorer
 import difflib
+
+GENERATOR_OPTIONS_DEFAULT = {"min_length": 1, "max_length": 128, "num_beams": 10, "num_return_sequences": 1,
+                             "do_sample": False, "top_k": 0, "top_p": 0.9, "temperature": 1.0,
+                             "length_penalty": 1.0, "repetition_penalty": 1.0}
 
 def run_evaluation(eval_data, model_dict):
     eval_res = []
@@ -136,20 +140,22 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--chkpt', type = int, default = 1)
     args = parser.parse_args()
-    model_path = './models/merged_outputs/exc_EaSa_alt_input_format/model_' + str(args.chkpt) + '.hf'
-    tokenizer_path = 't5-small'
+    model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/model_' + str(args.chkpt) + '.hf'
+    tokenizer_path = 't5-large'
     model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0])
     
-    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/annotated_data_v2.csv")
+    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/eval_data.csv")
     crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
-    textpairs = [[x,y] for x,y in zip(crowdsourced_data['Expert'], crowdsourced_data['Annotation'])]
+    test_data = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
     
-    eval_data = textpairs[-31:]
-    print("There are {} eval text pairs".format(len(eval_data)))
-    eval_pairs, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(eval_data, eval=True)
+    print("There are {} eval text pairs".format(len(test_data)))
+    test_pairs, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(eval_data, eval=True, single_angle=True)
+    all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = post_processing_single_angle(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval, simplify=False)
     
-    eval_data = get_eval_data(eval_pairs, slots_eval, all_annotations_eval, in_place_annotation=False)
-    batch_instances = batch_for_conditional_gen_merged_outputs(eval_data)
+    test_data = get_eval_data(test_pairs, slots_eval, all_annotations_eval, in_place_annotation=False)
+    batch_instances = batch_for_conditional_gen_merged_outputs(test_data)
+    for x in batch_instances:
+        print(x, '\n')
     all_res = run_batch_generation(model_dict['model'], model_dict['tokenizer'], model_dict['cuda_device'],GENERATOR_OPTIONS_DEFAULT, batch_instances)
     
     #testing_run_macaw(eval_data)
@@ -197,6 +203,7 @@ if __name__ == '__main__':
         true_outputs.append(res['true_output'])
         outputs.append(res['output_raw_list'])
         angles.append(res['angle'])
-        
+
+    dir = './results/t5_large/merged_outputs/'
     df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
-    df.to_csv('eval_exc_EaSa_alt_input_format_'+str(args.chkpt)+'.csv', index=False)        
+    df.to_csv(dir + 'eval_exc_EaSa_alt_input_format_single_angle_'+str(args.chkpt)+'.csv', index=False)        

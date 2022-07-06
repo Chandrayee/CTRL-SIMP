@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 def get_training_loss(dir):
     losses = []
-    for i in range(20):
+    for i in range(30):
         file = dir + 'result_for_epoch_' + str(i) + '.pkl'
         with open(file, 'rb') as f:
             e = pickle.load(f)
@@ -18,22 +18,20 @@ def get_training_loss(dir):
 
 def get_eval_loss(dir):
     losses = []
-    for i in range(20):
+    for i in range(30):
         file = dir + 'result_for_epoch_' + str(i) + '.pkl'
         with open(file, 'rb') as f:
             e = pickle.load(f)
             losses.append(e['eval']['eval_loss'])
     return losses
 
-losses_small_train = get_training_loss('./results/t5_small/')
-losses_small_eval = get_eval_loss('./results/t5_small/')
-losses_large_train = get_training_loss('./results/t5_large/')
-losses_large_eval = get_eval_loss('./results/t5_large/')
-plt.plot(losses_small_train, label = 'train T5-small')
+
+dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/'
+losses_large_train = get_training_loss(dir)
+losses_large_eval = get_eval_loss(dir)
 plt.plot(losses_large_train, label = 'train T5-large')
-plt.plot(losses_small_eval, label = 'eval T5-small')
 plt.plot(losses_large_eval, label = 'eval T5-large')
 plt.legend()
-plt.show()
+plt.savefig('./results/t5_large/merged_outputs/t5_single_angle_no_simple.png', dpi=150)
 
 
