@@ -145,12 +145,12 @@ def test_merged_outputs(training_pairs, shuffle = True, in_place_annotation = Fa
         
         
         
-def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, dev_pairs, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=5):
+def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, dev_pairs, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=1):
     print("Running model with merged inputs")
     optimizer = torch.optim.AdamW(model.parameters(), lr=8e-6)
     for epoch in range(num_epochs):
         epoch_loss = []
-        gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = 4, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
+        gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = 16, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
         data_per_batch = defaultdict(dict)
         with torch.autograd.set_detect_anomaly(True):
             for i, batch in enumerate(gen):
@@ -231,7 +231,7 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
             'loss': average_loss,
             }, PATH)'''
 
-        model.save_pretrained('./models/t5_small/merged_outputs/exc_EaSa_alt_input_format/model_'+str(epoch)+'.hf')
+        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format/multiangle/model_'+str(epoch)+'.hf')
         
 def print_data(all_inputs, all_outputs, all_annotations, slots):
     for i, val in slots.items():
@@ -312,8 +312,8 @@ if __name__ == '__main__':
     print("There are {} training text pairs".format(len(training_data)))
     print("There are {} dev text pairs".format(len(dev_data)))
     
-    DEFAULT_RESULTS_DIR = './results/t5_small/merged_outputs/exc_EaSa_alt_input_format'
-    model_dict = load_model(model_name_or_path="t5-small", tokenizer_path="t5-small", cuda_devices = [0])
+    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format/multiangle/'
+    model_dict = load_model(model_name_or_path="t5-large", tokenizer_path="t5-large", cuda_devices = [0, 1])
 
     #test_merged_outputs(training_data)
     
