@@ -140,7 +140,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--chkpt', type = int, default = 1)
     args = parser.parse_args()
-    model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/model_' + str(args.chkpt) + '.hf'
+    model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/model_' + str(args.chkpt) + '.hf'
     tokenizer_path = 't5-large'
     model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
     
@@ -152,7 +152,7 @@ if __name__ == '__main__':
         test_data = textpairs[j:j+5]
         print("There are {} eval text pairs".format(len(test_data)))
         test_pairs, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(test_data, eval=True, single_angle=True)
-        all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = post_processing_single_angle(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval, simplify=False)
+        all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = post_processing_single_angle(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval, simplify=True)
         test_data = get_eval_data(test_pairs, slots_eval, all_annotations_eval, in_place_annotation=False)
         batch_instances = batch_for_conditional_gen_merged_outputs(test_data)
         for idx, x in enumerate(batch_instances):
@@ -160,7 +160,9 @@ if __name__ == '__main__':
             print(x, '\n')
         all_res = run_batch_generation(model_dict['model'], model_dict['tokenizer'], model_dict['cuda_device'],GENERATOR_OPTIONS_DEFAULT, batch_instances)
         outputs = []
+        outputs_parsed = []
         true_outputs = []
+        true_outputs_parsed = []
         inputs = []
         angles = []
         metrics_rouge = []
@@ -169,12 +171,11 @@ if __name__ == '__main__':
         diff_raw_exp = []
         ratio_raw_exp = []
         for res in all_res:
+            print('==========printing res=================')
+            print(res)
             print('\n\n')
             print(len(res['true_output_text']), len(res['output_slots_list'][0]))
-            input = res['input'].split(' ; ')
-            for x in input:
-                if x.startswith('$expert$'):
-                    raw_input = x.split("=")[1].strip()
+            raw_input = res['input'].split("$expert$ = ")[1].strip()
             print('raw_input: ', raw_input, '\n')
             for idx, val in enumerate(res['true_output_text']):
                 if val == '[<extra_id_0>]':
@@ -188,6 +189,7 @@ if __name__ == '__main__':
                 exp_diff, exp_ratio = compute_diff([raw_input], [raw_generated[-1]])
             else:
                 print("Some slot is skipped in generation, it is a failure.")
+                raw_generated = ['Failure']
                 rouges = [0] * len(res['true_output_text'])
                 diff = [-1] * len(res['true_output_text'])
                 ratio = [-1] * len(res['true_output_text'])
@@ -201,10 +203,13 @@ if __name__ == '__main__':
             ratio_raw_exp.append(exp_ratio[0])
             inputs.append(res['input'])
             res['true_output'] = res['true_output'].replace('<extra_id_0>', ' ')
+            res['true_output_text'] = [x.replace('<extra_id_0>', ' ') for x in res['true_output_text']]
             true_outputs.append(res['true_output'])
             outputs.append(res['output_raw_list'])
+            outputs_parsed.append(raw_generated)
+            true_outputs_parsed.append(res['true_output_text'])
             angles.append(res['angle'])
 
-        dir = './results/t5_large/merged_outputs/'
-        df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
-        df.to_csv(dir + 'eval_exc_EaSa_alt_input_format_single_angle_'+str(args.chkpt)+'_batchno'+str(j)+'.csv', index=False)        
+        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/dev/'
+        df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'True_outputs_parsed':true_outputs_parsed, 'Outputs_parsed':outputs_parsed, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
+        df.to_csv(dir + 'part_files/eval_exc_EaSa_alt_input_format_single_angle_'+str(args.chkpt)+'_batchno'+str(j)+'.csv', index=False)        

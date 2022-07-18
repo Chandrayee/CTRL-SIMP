@@ -231,7 +231,7 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
             'loss': average_loss,
             }, PATH)'''
 
-        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/model_'+str(epoch)+'.hf')
+        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/model_'+str(epoch)+'.hf')
         
 def print_data(all_inputs, all_outputs, all_annotations, slots):
     for i, val in slots.items():
@@ -277,7 +277,7 @@ if __name__ == '__main__':
     #training_data = training_data[:16]
     print("There are {} training text pairs".format(len(training_data)))
     training_data, all_inputs_train, all_outputs_train, all_annotations_train, slots_train = load_data(training_data, eval=True, single_angle=True)
-    all_inputs_train, all_outputs_train, all_annotations_train, slots_train = post_processing_single_angle(all_inputs_train, all_outputs_train, all_annotations_train, slots_train, simplify=False)
+    all_inputs_train, all_outputs_train, all_annotations_train, slots_train = post_processing_single_angle(all_inputs_train, all_outputs_train, all_annotations_train, slots_train, simplify=True)
     #print_data(all_inputs_train, all_outputs_train, all_annotations_train, slots_train)
 
 
@@ -291,7 +291,7 @@ if __name__ == '__main__':
     #print_data(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval)
 
 
-    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle'
+    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/train'
     model_dict = load_model(model_name_or_path="t5-large", tokenizer_path="t5-large", cuda_devices = [0, 1])
 
     #test_merged_outputs(training_data)
