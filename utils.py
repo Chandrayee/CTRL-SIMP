@@ -4,7 +4,7 @@ DEFAULT_SLOT_FORMAT = {
     "separator": " ; ",
     "missing_value": "N/A"
 }
-SLOT_SHORTFORMS = {"S": "Simple", "E": "Expert", "X": "Elaborate_output", "Xi": "Elaborate_input", "Xs": "Add sentence", "C": "Context", "D": "Delete", "R": "Replace_output", "Ri": "Replace_input", "F":"Define", "Ea":"Annotated_expert", "Sa":"Annotated_Simple", "I":"Insert"}
+SLOT_SHORTFORMS = {"S": "Simple", "E": "Expert", "X": "Elaborate", "Xi": "Elaborate_in", "Xs": "Add sentence", "C": "Context", "D": "Delete", "R": "Replace", "Ri": "Replace_in", "F":"Define", "Ea":"Annotated_expert", "Sa":"Annotated_Simple", "I":"Insert"}
 ANNOTATION_SLOT_MAP = {"<elab>": "X", "<del>": "D", "<ins>": "I", "<rep>": "R", "<elab-define>":"F", "<elab-sentence>": "Xs"}
 SLOT_FROM_LC = {x.lower(): x for x in SLOT_SHORTFORMS.values()}
 SLOT_KEY_FROM_LC = {v.lower(): k for k, v in SLOT_SHORTFORMS.items()}

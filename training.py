@@ -34,7 +34,7 @@ def print_text(string, text_type = 'Input'):
         print('\t ' + line)
     
 
-def train_model_with_outputs(model, tokenizer, cuda_device, training_pairs, eval_pairs, shuffle = True, in_place_annotation = True, one_slot = False, data_dir = None, num_epochs=20):
+def train_model_with_outputs(model, tokenizer, cuda_device, training_pairs, eval_pairs, shuffle = True, in_place_annotation = True, one_slot = False, data_dir = None, num_epochs=30):
     optimizer = torch.optim.AdamW(model.parameters(), lr=8e-6)
     # overall_loss = torch.tensor(0.0, requires_grad=True).to(cuda_device)
     for epoch in range(num_epochs):
@@ -145,12 +145,12 @@ def test_merged_outputs(training_pairs, shuffle = True, in_place_annotation = Fa
         
         
         
-def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, dev_pairs, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=1):
+def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, dev_pairs, num_epochs = 30, batch_size = 4, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None):
     print("Running model with merged inputs")
     optimizer = torch.optim.AdamW(model.parameters(), lr=8e-6)
     for epoch in range(num_epochs):
         epoch_loss = []
-        gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = 16, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
+        gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = batch_size, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
         data_per_batch = defaultdict(dict)
         with torch.autograd.set_detect_anomaly(True):
             for i, batch in enumerate(gen):
@@ -270,6 +270,8 @@ if __name__ == '__main__':
     parser.add_argument('--one_slot', type = bool, default = False)
     parser.add_argument('--merged_output', type = bool, default = True)
     parser.add_argument('--multi_angle', type = bool, default = True)
+    parser.add_argument('--epochs', type = int, default = 30)
+    parser.add_argument('--batch_size', type = int, default = 4)
     args = parser.parse_args()
     
     if args.multi_angle:
