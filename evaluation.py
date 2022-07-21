@@ -1,7 +1,7 @@
 from collections import defaultdict
 import re
 import random
-from preprocessing import load_data
+from preprocessing import load_data, post_processing_single_angle_only_S
 from automatic_annotation import get_replacement
 from model import model_input_format, load_model, run_model, run_model_with_outputs, get_eval_data, run_macaw, run_generate
 import torch
@@ -136,67 +136,65 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--chkpt', type = int, default = 1)
     args = parser.parse_args()
-    model_path = './models/merged_outputs/exc_EaSa_alt_input_format/model_' + str(args.chkpt) + '.hf'
-    tokenizer_path = 't5-small'
-    model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0])
+    model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format/e2s/model_' + str(args.chkpt) + '.hf'
+    tokenizer_path = 't5-large'
+    model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
     
-    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/annotated_data_v2.csv")
+    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/dev_data.csv")
     crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
-    textpairs = [[x,y] for x,y in zip(crowdsourced_data['Expert'], crowdsourced_data['Annotation'])]
+    textpairs = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
     
-    eval_data = textpairs[-31:]
+    #eval_data = textpairs[-31:]
     print("There are {} eval text pairs".format(len(eval_data)))
-    eval_pairs, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(eval_data, eval=True)
-    
-    eval_data = get_eval_data(eval_pairs, slots_eval, all_annotations_eval, in_place_annotation=False)
-    batch_instances = batch_for_conditional_gen_merged_outputs(eval_data)
-    all_res = run_batch_generation(model_dict['model'], model_dict['tokenizer'], model_dict['cuda_device'],GENERATOR_OPTIONS_DEFAULT, batch_instances)
-    
-    #testing_run_macaw(eval_data)
-    #batch_instances = create_batch_for_generation(eval_data)
-    #eval = run_evaluation(eval_pairs, slots_eval, all_annotations_eval, model_dict)
-    
-    outputs = []
-    true_outputs = []
-    inputs = []
-    angles = []
-    metrics_rouge = []
-    metrics_diff = []
-    ratio_metrics_diff = []
-    diff_raw_exp = []
-    ratio_raw_exp = []
-    for res in all_res:
-        print('\n\n')
-        print(len(res['true_output_text']), len(res['output_slots_list'][0]))
-        input = res['input'].split(' ; ')
-        for x in input:
-            if x.startswith('$expert$'):
-                raw_input = x.split("=")[1].strip()
-        print('raw_input: ', raw_input, '\n')
-        if len(res['true_output_text'])==len(res['output_slots_list'][0]):
-            raw_generated = [v for _, v in res['output_slots_list'][0].items()]
-            print('raw_generated: ', raw_generated)
-            print('true_output: ', res['true_output_text'])
-            rouges = compute_rouge(res['true_output_text'], raw_generated)
-            diff, ratio = compute_diff(res['true_output_text'], raw_generated)
-            exp_diff, exp_ratio = compute_diff([raw_input], [raw_generated[-1]])
-        else:
-            print("Some slot is skipped in generation, it is a failure.")
-            rouges = [0] * len(res['true_output_text'])
-            diff = [-1] * len(res['true_output_text'])
-            ratio = [-1] * len(res['true_output_text'])
-            exp_diff = [-1]
-            exp_ratio = [-1]
-        print('text_diff: ', (diff, ratio))
-        metrics_rouge.append(rouges)
-        metrics_diff.append(diff)
-        ratio_metrics_diff.append(ratio)
-        diff_raw_exp.append(exp_diff)
-        ratio_raw_exp.append(exp_ratio[0])
-        inputs.append(res['input'])
-        true_outputs.append(res['true_output'])
-        outputs.append(res['output_raw_list'])
-        angles.append(res['angle'])
-        
-    df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
-    df.to_csv('eval_exc_EaSa_alt_input_format_'+str(args.chkpt)+'.csv', index=False)        
+    for j in range(0, len(textpairs), 5):
+        print('running {} th batch'.format(j))
+        test_data = textpairs[j:j+5]
+        test_pairs, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(test_data, eval=True, single_angle=True)
+        all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = post_processing_single_angle_only_S(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval)
+        test_data = get_eval_data(test_pairs, slots_eval, all_annotations_eval, in_place_annotation=False)
+        batch_instances = batch_for_conditional_gen_merged_outputs(test_data)
+        all_res = run_batch_generation(model_dict['model'], model_dict['tokenizer'], model_dict['cuda_device'],GENERATOR_OPTIONS_DEFAULT, batch_instances)
+        outputs = []
+        outputs_parsed = []
+        true_outputs = []
+        true_outputs_parsed = []
+        inputs = []
+        angles = []
+        metrics_rouge = []
+        metrics_diff = []
+        ratio_metrics_diff = []
+        diff_raw_exp = []
+        ratio_raw_exp = []
+        for res in all_res:
+            print('\n\n')
+            print(len(res['true_output_text']), len(res['output_slots_list'][0]))
+            raw_input = res['input'].split("$expert$ = ")[1].strip()
+            if len(res['true_output_text'])==len(res['output_slots_list'][0]):
+                raw_generated = [v for _, v in res['output_slots_list'][0].items()]
+                print('raw_generated: ', raw_generated)
+                print('true_output: ', res['true_output_text'])
+                rouges = compute_rouge(res['true_output_text'], raw_generated)
+                diff, ratio = compute_diff(res['true_output_text'], raw_generated)
+                exp_diff, exp_ratio = compute_diff([raw_input], [raw_generated[-1]])
+            else:
+                print("Some slot is skipped in generation, it is a failure.")
+                rouges = [0] * len(res['true_output_text'])
+                diff = [-1] * len(res['true_output_text'])
+                ratio = [-1] * len(res['true_output_text'])
+                exp_diff = [-1]
+                exp_ratio = [-1]
+            print('text_diff: ', (diff, ratio))
+            metrics_rouge.append(rouges)
+            metrics_diff.append(diff)
+            ratio_metrics_diff.append(ratio)
+            diff_raw_exp.append(exp_diff)
+            ratio_raw_exp.append(exp_ratio[0])
+            inputs.append(res['input'])
+            true_outputs.append(res['true_output'])
+            outputs.append(res['output_raw_list'])
+            outputs_parsed.append(raw_generated)
+            true_outputs_parsed.append(res['true_output_text'])
+            angles.append(res['angle'])
+        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2s/dev/'
+        df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'True_outputs_parsed':true_outputs_parsed, 'Outputs_parsed':outputs_parsed, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
+        df.to_csv(dir + 'part_files/eval_exc_EaSa_alt_input_format_single_angle_'+str(args.chkpt)+'_batchno'+str(j)+'.csv', index=False)
