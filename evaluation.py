@@ -140,12 +140,10 @@ if __name__ == '__main__':
     tokenizer_path = 't5-large'
     model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
     
-    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/dev_data.csv")
+    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/dev_data.csv", encoding='unicode_escape', engine='python')
     crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
     textpairs = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
     
-    #eval_data = textpairs[-31:]
-    print("There are {} eval text pairs".format(len(eval_data)))
     for j in range(0, len(textpairs), 16):
         print('running {} th batch'.format(j))
         test_data = textpairs[j:j+16]
