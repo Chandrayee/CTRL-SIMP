@@ -672,6 +672,12 @@ def post_processing_single_angle(all_inputs, all_outputs, all_annotations, slots
         all_annotations[i][key] = ['<extra_id_0>']
   return all_inputs, all_outputs, all_annotations, slots
 
+def post_processing_single_angle_only_S(all_inputs, all_outputs, all_annotations, slots):
+  for i, val in slots.items():
+    all_inputs[i] = {'E'}
+    all_outputs[i] = {'S'}
+    slots[i] = [(['E'], ['S'])]
+  return all_inputs, all_outputs, all_annotations, slots
 
 def test_eval(textpairs, annotation_dict, slots):
   batch = []
@@ -824,21 +830,21 @@ if __name__ == '__main__':
     #textpairs = textpairs[:2]
     textpairs, all_inputs, all_outputs, all_annotations, slots = load_data(textpairs, eval=True, single_angle=True)
     #print(slots[:2])
-    #all_inputs, all_outputs, all_annotations, slots = post_processing_single_angle(all_inputs, all_outputs, all_annotations, slots, simplify=False)
-    angle_counter, all_annotations, altered_slots = get_multiangle_data(slots, all_annotations)
+    all_inputs, all_outputs, all_annotations, slots = post_processing_single_angle_only_S(all_inputs, all_outputs, all_annotations, slots)
+    #angle_counter, all_annotations, altered_slots = get_multiangle_data(slots, all_annotations)
     #print(altered_slots)
 
     print('There are {} eval data'.format(len(textpairs)))
-    print(angle_counter)
+    #print(angle_counter)
     
-    '''
-    batch = test_eval(textpairs, all_annotations, altered_slots)
+    batch = test_eval(textpairs, all_annotations, slots)
     
     for input, outputs in batch:
       print('Input')
       print(input, '\n')
       print('Labels')
       print(outputs, '\n')
+
     '''
   
     crowdsourced_data.to_csv('processed_eval_data.csv', index = False)
@@ -846,4 +852,4 @@ if __name__ == '__main__':
     with open('eval_annotations_slots.json', 'w') as f:
       json.dump({'angle_counter': angle_counter, 'annotations': all_annotations, 'slots': altered_slots}, f)
       
-        
+    ''' 
