@@ -5,10 +5,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--chkpt', type = int, default = 0)
 args = parser.parse_args()
 
-dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/dev/'
+dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2s/dev/'
 dflist = []
 
-for i in range(0, 200, 5):
+for i in range(0, 200, 16):
     locals()['df_'+str(i)] = pd.read_csv(dir + 'part_files/eval_exc_EaSa_alt_input_format_single_angle_'+str(args.chkpt)+'_batchno'+str(i)+'.csv')
     dflist.append(locals()['df_'+str(i)])
 
