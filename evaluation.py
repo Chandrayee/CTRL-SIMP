@@ -136,7 +136,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--chkpt', type = int, default = 1)
     args = parser.parse_args()
-    model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format/e2s/model_' + str(args.chkpt) + '.hf'
+    model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2s/model_' + str(args.chkpt) + '.hf'
     tokenizer_path = 't5-large'
     model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
     
@@ -146,9 +146,9 @@ if __name__ == '__main__':
     
     #eval_data = textpairs[-31:]
     print("There are {} eval text pairs".format(len(eval_data)))
-    for j in range(0, len(textpairs), 5):
+    for j in range(0, len(textpairs), 16):
         print('running {} th batch'.format(j))
-        test_data = textpairs[j:j+5]
+        test_data = textpairs[j:j+16]
         test_pairs, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(test_data, eval=True, single_angle=True)
         all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = post_processing_single_angle_only_S(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval)
         test_data = get_eval_data(test_pairs, slots_eval, all_annotations_eval, in_place_annotation=False)
