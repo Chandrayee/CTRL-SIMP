@@ -122,7 +122,7 @@ def train_model_with_outputs(model, tokenizer, cuda_device, training_pairs, eval
             'loss': average_loss,
             }, PATH)
 
-        model.save_pretrained('./models/exc_EaSa_alt_format/model_'+str(epoch)+'.hf')
+        model.save_pretrained('./models/exc_EaSa_alt_format_single_angle/model_'+str(epoch)+'.hf')
         
 def test_merged_outputs(training_pairs, shuffle = True, in_place_annotation = False, one_slot = False):
     gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = 16, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
@@ -159,45 +159,48 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
                 overall_loss = 0.
                 data_per_batch[i]['res_per_example'] = []
                 for input, output in batch:
-                    state_dict = get_state_dict(input, output)
-                    input_string, output_strings, angle = model_input_format(state_dict)
-                    if angle in tags:
-                        loss_multiplier = tags[angle]
-                    else:
-                        loss_multiplier = 1
-                    print('\n\n\t angle for this example: ', angle)
-                    input_ids = tokenizer.encode(input_string, return_tensors="pt").to(cuda_device)
-                    output_string = [string for string, _ in output_strings]
-                    output_text = [text for _, text in output_strings]
-                    if len(output_strings) > 1:
-                        output_string = ' ; '.join(output_string)
-                    else:
-                        output_string = output_string[0]
-                    output_ids = tokenizer.encode(output_string, return_tensors="pt").to(cuda_device)
-                    output_ids[output_ids[:] == tokenizer.pad_token_id] = -100
-                    print_text(input_string)
-                    print_text(output_string, text_type='Output')
-                    res = model(input_ids, labels=output_ids, return_dict=True)
-                    res_softmax = torch.softmax(res.logits[0], dim=1)
-                    raw_probs = [x[y.item()].item() for x,y in list(zip(res_softmax, output_ids[0]))]
-                    output_prob = 1
-                    for raw_prob in raw_probs:
-                        output_prob *= raw_prob
-                    print('\n\t\t loss for output string : {}'.format(res.loss.item()))
+                    #print('raw input: ', input)
+                    #print('raw_output: ', output)
+                    if input != "" and output != []:
+                        state_dict = get_state_dict(input, output)
+                        input_string, output_strings, angle = model_input_format(state_dict)
+                        if angle in tags:
+                            loss_multiplier = tags[angle]
+                        else:
+                            loss_multiplier = 1
+                        print('\n\n\t angle for this example: ', angle)
+                        input_ids = tokenizer.encode(input_string, return_tensors="pt").to(cuda_device)
+                        output_string = [string for string, _ in output_strings]
+                        output_text = [text for _, text in output_strings]
+                        if len(output_strings) > 1:
+                            output_string = ' ; '.join(output_string)
+                        else:
+                            output_string = output_string[0]
+                        output_ids = tokenizer.encode(output_string, return_tensors="pt").to(cuda_device)
+                        output_ids[output_ids[:] == tokenizer.pad_token_id] = -100
+                        print_text(input_string)
+                        print_text(output_string, text_type='Output')
+                        res = model(input_ids, labels=output_ids, return_dict=True)
+                        res_softmax = torch.softmax(res.logits[0], dim=1)
+                        raw_probs = [x[y.item()].item() for x,y in list(zip(res_softmax, output_ids[0]))]
+                        output_prob = 1
+                        for raw_prob in raw_probs:
+                            output_prob *= raw_prob
+                        print('\n\t\t loss for output string : {}'.format(res.loss.item()))
                         
-                    loss = res.loss / len(batch)
-                    loss *= loss_multiplier
-                    out = {'loss': res.loss.item(), 
-                        "average loss": loss.item(),
-                        'out_string': output_string,
-                        'out_text': output_text,
-                        "output_tokens": tokenizer.convert_ids_to_tokens(output_ids[0]),
-                        "raw_probs": raw_probs,
-                        "output_prob": output_prob
+                        loss = res.loss / len(batch)
+                        loss *= loss_multiplier
+                        out = {'loss': res.loss.item(), 
+                               "average loss": loss.item(),
+                               'out_string': output_string,
+                               'out_text': output_text,
+                               "output_tokens": tokenizer.convert_ids_to_tokens(output_ids[0]),
+                               "raw_probs": raw_probs,
+                               "output_prob": output_prob
                         }
-                    loss.backward()
-                    overall_loss += loss.item()
-                    data_per_batch[i]['res_per_example'].append({'outputs': out, 'input_string': input_string, 'angle': angle})
+                        loss.backward()
+                        overall_loss += loss.item()
+                        data_per_batch[i]['res_per_example'].append({'outputs': out, 'input_string': input_string, 'angle': angle})
                 data_per_batch[i]['loss_per_batch'] = overall_loss 
                 print('\nloss per batch: {}'.format(overall_loss))
                 print('\n\n=======================================')
@@ -231,7 +234,7 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
             'loss': average_loss,
             }, PATH)'''
 
-        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format/e2s/model_'+str(epoch)+'.hf')
+        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2sa/bs'+str(batch_size)+'/model_'+str(epoch)+'.hf')
         
 def print_data(all_inputs, all_outputs, all_annotations, slots):
     for i, val in slots.items():
@@ -266,7 +269,7 @@ if __name__ == '__main__':
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--shuffle', type = bool, default = True)
-    parser.add_argument('--ip_ann', type = bool, default = False)
+    parser.add_argument('--ip_ann', type = bool, default = True)
     parser.add_argument('--one_slot', type = bool, default = False)
     parser.add_argument('--merged_output', type = bool, default = True)
     parser.add_argument('--multi_angle', type = bool, default = False)
@@ -299,7 +302,7 @@ if __name__ == '__main__':
         training_data = [[x,y,z] for x,y,z in zip(train_file['Expert'], train_file['Simple'], train_file['Annotation'])]
         training_data, all_inputs_train, all_outputs_train, all_annotations_train, slots_train = load_data(training_data, eval=True, single_angle=True)
         #angle_counter_train, all_annotations_train, altered_slots_train = get_multiangle_data(slots_train, all_annotations_train)
-        all_inputs_train, all_outputs_train, all_annotations_train, slots_train = post_processing_single_angle_only_S(all_inputs_train, all_outputs_train, all_annotations_train, slots_train)
+        all_inputs_train, all_outputs_train, all_annotations_train, slots_train = post_processing_single_angle_only_S(all_inputs_train, all_outputs_train, all_annotations_train, slots_train, out = 'Sa')
         #print_data(all_inputs_train, all_outputs_train, all_annotations_train, slots_train)
 
 
@@ -308,13 +311,13 @@ if __name__ == '__main__':
         dev_data = [[x,y,z] for x,y,z in zip(dev_file['Expert'], dev_file['Simple'], dev_file['Annotation'])]
         dev_data, all_inputs_dev, all_outputs_dev, all_annotations_dev, slots_dev = load_data(dev_data, eval=True, single_angle=True)
         #angle_counter_eval, all_annotations_eval, altered_slots_eval = get_multiangle_data(slots_eval, all_annotations_eval)
-        all_inputs_dev, all_outputs_dev, all_annotations_dev, slots_dev = post_processing_single_angle_only_S(all_inputs_dev, all_outputs_dev, all_annotations_dev, slots_dev)
+        all_inputs_dev, all_outputs_dev, all_annotations_dev, slots_dev = post_processing_single_angle_only_S(all_inputs_dev, all_outputs_dev, all_annotations_dev, slots_dev, out = 'Sa')
         #print_data(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval)
 
     print("There are {} training text pairs".format(len(training_data)))
     print("There are {} dev text pairs".format(len(dev_data)))
     
-    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format/e2s'
+    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2sa/train'
     model_dict = load_model(model_name_or_path="t5-large", tokenizer_path="t5-large", cuda_devices = [0, 1])
 
     #test_merged_outputs(training_data)

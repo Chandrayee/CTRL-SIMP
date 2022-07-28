@@ -5,7 +5,7 @@ import argparse
 #parser.add_argument('--chkpt', type = int, default = 0)
 #args = parser.parse_args()
 
-dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2s/dev/'
+dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2sa/dev/'
 
 for j in range(0,30):
     print(j)

@@ -672,11 +672,11 @@ def post_processing_single_angle(all_inputs, all_outputs, all_annotations, slots
         all_annotations[i][key] = ['<extra_id_0>']
   return all_inputs, all_outputs, all_annotations, slots
 
-def post_processing_single_angle_only_S(all_inputs, all_outputs, all_annotations, slots):
+def post_processing_single_angle_only_S(all_inputs, all_outputs, all_annotations, slots, out = 'S'):
   for i, val in slots.items():
     all_inputs[i] = {'E'}
-    all_outputs[i] = {'S'}
-    slots[i] = [(['E'], ['S'])]
+    all_outputs[i] = {out}
+    slots[i] = [(['E'], [out])]
   return all_inputs, all_outputs, all_annotations, slots
 
 def test_eval(textpairs, annotation_dict, slots):
@@ -830,7 +830,7 @@ if __name__ == '__main__':
     #textpairs = textpairs[:2]
     textpairs, all_inputs, all_outputs, all_annotations, slots = load_data(textpairs, eval=True, single_angle=True)
     #print(slots[:2])
-    all_inputs, all_outputs, all_annotations, slots = post_processing_single_angle_only_S(all_inputs, all_outputs, all_annotations, slots)
+    all_inputs, all_outputs, all_annotations, slots = post_processing_single_angle_only_S(all_inputs, all_outputs, all_annotations, slots, out = 'Sa')
     #angle_counter, all_annotations, altered_slots = get_multiangle_data(slots, all_annotations)
     #print(altered_slots)
 
