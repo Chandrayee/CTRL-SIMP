@@ -593,8 +593,8 @@ def prep_final_slots_per_datapoint(textpairs, sampling = False):
 def get_training_data(annotation_dict, slot, in_place_annotation = True):
   inputs = []
   outputs = []
-  print(annotation_dict)
-  print(slot)
+  #print(annotation_dict)
+  #print(slot)
   for inp, out in slot:
     if not in_place_annotation:
       if 'Ea' in inp:
@@ -626,8 +626,9 @@ def get_training_data(annotation_dict, slot, in_place_annotation = True):
             text = " | ".join([str(x) for x in annotation_dict[output_slot]])
             text = '[' + text + ']'
             output_strings.append(output_slot + ':' + text)
-      print(input_string)
-      print(output_strings)
+      print('input: ', input_string)
+      print('output: ', output_strings)
+      print('\n\n')
       inputs.append(input_string)
       outputs.append(output_strings)
 
