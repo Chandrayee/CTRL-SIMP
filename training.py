@@ -293,7 +293,7 @@ if __name__ == '__main__':
 
 
     DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(args.batch_size)+'/train'
-    model_dict = load_model(model_name_or_path="t5-large", tokenizer_path="t5-large", cuda_devices = [0, 1])
+    model_dict = load_model(model_name_or_path="t5-large", tokenizer_path="t5-large", cuda_devices = [3, 4, 5])
 
     #test_merged_outputs(training_data)
     model_dir = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(args.batch_size)+'/model_'+'0'+'.hf'
