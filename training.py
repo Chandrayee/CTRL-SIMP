@@ -145,12 +145,12 @@ def test_merged_outputs(training_pairs, shuffle = True, in_place_annotation = Fa
         
         
         
-def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, eval_pairs, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=30):
+def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, eval_pairs, batch_size = 4, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=30):
     print("Running model with merged inputs")
     optimizer = torch.optim.AdamW(model.parameters(), lr=8e-6)
     for epoch in range(num_epochs):
         epoch_loss = []
-        gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = 16, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
+        gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = batch_size, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
         data_per_batch = defaultdict(dict)
         with torch.autograd.set_detect_anomaly(True):
             for i, batch in enumerate(gen):
@@ -231,7 +231,7 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
             'loss': average_loss,
             }, PATH)'''
 
-        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/model_'+str(epoch)+'.hf')
+        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(batch_size)+'/model_'+str(epoch)+'.hf')
         
 def print_data(all_inputs, all_outputs, all_annotations, slots):
     for i, val in slots.items():
@@ -269,6 +269,7 @@ if __name__ == '__main__':
     parser.add_argument('--ip_ann', type = bool, default = False)
     parser.add_argument('--one_slot', type = bool, default = False)
     parser.add_argument('--merged_output', type = bool, default = True)
+    parser.add_argument('--batch_size', type = int, default = 4)
     args = parser.parse_args()
     
     train_file = pd.read_csv("./Datasets/annotated_data/train_data.csv", encoding='unicode_escape',engine='python')
@@ -291,14 +292,16 @@ if __name__ == '__main__':
     #print_data(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval)
 
 
-    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/train'
+    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(args.batch_size)+'/train'
     model_dict = load_model(model_name_or_path="t5-large", tokenizer_path="t5-large", cuda_devices = [0, 1])
 
     #test_merged_outputs(training_data)
-    
+    model_dir = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(args.batch_size)+'/model_'+'0'+'.hf'
+    print('model_path: ',model_dir)
+    print('data_path: ', DEFAULT_RESULTS_DIR + '/result_for_epoch_0.pkl')
     
     if args.merged_output:
-        train_model_with_merged_outputs(model_dict['model'], model_dict['tokenizer'], model_dict['cuda_device'], training_data, eval_data, shuffle = args.shuffle, in_place_annotation = args.ip_ann, one_slot = args.one_slot, data_dir = DEFAULT_RESULTS_DIR)
+        train_model_with_merged_outputs(model_dict['model'], model_dict['tokenizer'], model_dict['cuda_device'], training_data, eval_data, batch_size = args.batch_size, shuffle = args.shuffle, in_place_annotation = args.ip_ann, one_slot = args.one_slot, data_dir = DEFAULT_RESULTS_DIR)
     else:
         train_model_with_outputs(model_dict['model'], model_dict['tokenizer'], model_dict['cuda_device'], training_data, eval_data, shuffle = args.shuffle, in_place_annotation = args.ip_ann, one_slot = args.one_slot, data_dir = DEFAULT_RESULTS_DIR)
     
