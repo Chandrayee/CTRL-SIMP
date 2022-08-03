@@ -157,6 +157,7 @@ def eval_loop(textpairs, chkpt, model_dict):
         ratio_raw_exp = []
         for res in all_res:
             print('\n\n')
+            print(res)
             print(len(res['true_output_text']), len(res['output_slots_list'][0]))
             raw_input = res['input'].split("$expert$ = ")[1].strip()
             if len(res['true_output']) > 0:
@@ -202,13 +203,15 @@ if __name__ == '__main__':
     crowdsourced_data = pd.read_csv("./Datasets/annotated_data/dev_data.csv", encoding='unicode_escape', engine='python')
     crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
     textpairs = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
+    #textpairs = textpairs[1:21]
     if args.test == 1:
         model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2sa/bs'+str(args.batch_size) +'/model_' + str(args.chkpt) + '.hf'
         model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
         eval_loop(textpairs, args.chkpt, model_dict)
     else:
         for chkpt in range(0, 30):
-            model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2s/bs8/model_' + str(chkpt) + '.hf'
+            model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2sa/bs'+str(args.batch_size)+'/model_' + str(chkpt) + '.hf'
+            print(model_path)
             model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
             eval_loop(textpairs, chkpt, model_dict)
     
