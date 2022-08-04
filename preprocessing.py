@@ -11,6 +11,8 @@ from collections import defaultdict
 import itertools
 import numpy as np
 from utils import DEFAULT_SLOT_FORMAT, SLOT_SHORTFORMS, ANNOTATION_SLOT_MAP, SLOT_KEY_FROM_LC
+import json
+import copy
 
 """
 This program takes expert text and annotated text and returns all the available 
@@ -69,6 +71,17 @@ def decompose_input(string):
         del res['C']
         res['C'] = context  # put context in last
     return res
+  
+def process_del(s):
+  start_pattern = '<del>'
+  end_pattern = '</' + start_pattern.split('<')[1][:-1] + '>'
+  ext_pattern = r'((' + start_pattern + '(.+?)' + end_pattern + '))+'
+  all_patterns = []
+  for match in re.finditer(ext_pattern, s):
+    end = match.end()
+    start = match.start()
+    all_patterns.append([match.group(3), (start, end)])
+  return all_patterns
 
 def process_del_punct(s):
   """ removes <del> tags from s, where deleted strings are not NN, JJ, RB, VB, JJS 
@@ -107,6 +120,18 @@ def process_del_punct(s):
   for x in tags_to_be_removed:
     all_patterns.remove(x)
   return m_string, all_patterns
+
+def process_ins(s):
+  start_pattern = '<ins>'
+  end_pattern = '</' + start_pattern.split('<')[1][:-1] + '>'
+  ext_pattern = r'((' + start_pattern + '(.+?)' + end_pattern + '))+'
+  all_patterns = []
+  for match in re.finditer(ext_pattern, s):
+    end = match.end()
+    start = match.start()
+    all_patterns.append([match.group(3), (start, end)])
+  return all_patterns
+  
 
 def process_ins_punct(s):
   """ removes <del> tags from s, where deleted strings are not NN, JJ, RB, VB, JJS 
@@ -225,6 +250,8 @@ def extract_pattern(pattern, text):
       str: re pattern with pattern name, string enclosed, position of patterns
       in text with start and end
   """
+  #print(text)
+  print('\n')
   start_pattern = pattern
   end_pattern = '</' + pattern.split('<')[1][:-1] + '>'
   ext_pattern = r'((' + start_pattern + '(.+?))<by>((.+?)' + end_pattern + '))+'
@@ -278,6 +305,72 @@ def construct_Ea(string, pattern_list):
       char_removed += end - start - 1
       
   return m_string
+
+
+def construct_alt_Ea(string, pattern_list):
+  """constructs annotated expert text from annotated simple text
+  and patterns with positions of <del>, <rep>, <elab> and <elab-sentence> tags
+
+  Args:
+      string (str):annotated simple text
+      pattern_list (list): contains all patterns present in string including <rep>, 
+      <del>, <elab> and <elab-sentence>
+
+  Returns:
+      str: annotated expert text
+  """
+  m_string = string
+  char_removed = 0
+  
+  for p in pattern_list:
+    if p[0] == '<del>':
+      print(p)
+      start, end = p[-2]
+      start -= char_removed
+      end -= char_removed
+      m_string = m_string[:start] + m_string[start+len('<del>'):end-len('<del>')-1] + m_string[end:]
+      char_removed += len("<del>")+len("</del>") 
+    elif p[0] == '<ins>':
+      print(p)
+      start, end = p[-2]
+      start -= char_removed
+      end -= char_removed
+      m_string = m_string[:start] + m_string[end+1:]
+      char_removed += end - start + 1
+    else:
+      print(p)
+      start, end = p[-2]
+      start -= char_removed
+      end -= char_removed
+      print(p[0],': ', m_string[start:end])
+      if p[0] == '<elab>':
+        token = '<extra_id_0>'
+      else:
+        token = '<extra_id_1>'
+      m_string = m_string[:start] + p[0] + p[1] + token +m_string[end:]
+      char_removed += len(p[2]) + len('/'+p[0]) + len('<by>') - len(token)
+    print(m_string)
+      
+  return m_string
+  
+
+def test_Ea(expert, simple):
+  patterns = ['<rep>', '<elab>']
+  ea = copy.copy(expert)
+  for pattern in patterns:
+    pattern_list = extract_pattern(pattern, simple)
+    print('pattern_list: ', pattern_list)
+    if pattern_list:
+      for x in pattern_list:
+        print('x_1: ', x[1])
+        y = re.search(x[1], ea)
+        print(y)
+        if y:
+          start, end = y.span()
+          ea = ea[:start] + pattern + ea[start:end] + '<by>' + ea[end:]
+  return ea
+    
+  
 
 def construct_S(string, pattern_list):
   """constructs simple text from annotated simple text
@@ -356,7 +449,8 @@ def get_added_sentence(pattern, text, annotation="token_pos"):
 
   return pattern_list
 
-def available_slots(texts, alternate_format=True):
+
+def available_slots(texts, alternate_format=True, ip_ann = True):
   """creates a list of all input and all output slots per text pair
 
   Args:
@@ -385,7 +479,10 @@ def available_slots(texts, alternate_format=True):
   for pattern in patterns:
     if pattern != "<elab-sentence>":
       if pattern == "<del>":
-        _, pattern_list = process_del_punct(a)
+        if ip_ann:
+          pattern_list = process_del(a)
+        else:
+          _, pattern_list = process_del_punct(a)
         if len(pattern_list)>0:
           pattern_list = [[pattern, 'None'] + list(x) + [(-1, -1)] for x in pattern_list]
           #print(pattern_list)
@@ -395,7 +492,10 @@ def available_slots(texts, alternate_format=True):
           output_slots.add(ANNOTATION_SLOT_MAP[pattern])
           annotation_dict[ANNOTATION_SLOT_MAP[pattern]] = [x[2] for x in pattern_list] #span prediction may not be easy, remove all_res[-1]
       elif pattern == "<ins>":
-        _, pattern_list = process_ins_punct(a)
+        if ip_ann:
+          pattern_list = process_ins(a)
+        else:
+          _, pattern_list = process_ins_punct(a)
         if len(pattern_list)>0:
           pattern_list = [[pattern, 'None'] + list(x) + [(-1, -1)] for x in pattern_list]
           #print(pattern_list)
@@ -453,12 +553,14 @@ def available_slots(texts, alternate_format=True):
     #s = construct_S(s, all_patterns)
     #s = process_ins_del(s, '<ins>')
     #annotation_dict['S'] = process_ins_del(s, '<del>')
-    ea = construct_Ea(annotation_dict['Sa'], all_patterns)
+    ea = construct_alt_Ea(annotation_dict['Sa'], all_patterns)
+    #ea = test_Ea(annotation_dict['E'], annotation_dict['Sa'])
     annotation_dict['Sa'], _ = process_ins_punct(annotation_dict['Sa'])
     annotation_dict['Sa'], _ = process_del_punct(annotation_dict['Sa'])
     #annotation_dict['Sa'] = process_ins_del(annotation_dict['Sa'] , '<ins>')
-    annotation_dict['Ea'] = process_ins_del(ea, '<ins>')
-
+    #annotation_dict['Ea'] = process_ins_del(ea, '<ins>')
+    annotation_dict['Ea'] = ea
+  
   return input_slots, output_slots, annotation_dict
 
 def get_singleangle_data(complete_input_slots, complete_output_slots, complete_annotation_dict):
@@ -530,6 +632,7 @@ def get_annotations(textpairs):
   all_outputs = []
   all_annotation = []
   for i, texts in enumerate(textpairs):
+    print(i)
     input_slots, output_slots, annotation_dict = available_slots(texts)
     all_inputs.append(input_slots)
     all_outputs.append(output_slots)
@@ -589,39 +692,44 @@ def prep_final_slots_per_datapoint(textpairs, sampling = False):
 def get_training_data(annotation_dict, slot, in_place_annotation = True):
   inputs = []
   outputs = []
+  #print(annotation_dict)
+  print(slot)
   for inp, out in slot:
-    if not in_place_annotation:
-      if 'Ea' in inp:
-        inp = inp.remove('Ea')
-      if 'Sa' in out:
-        out = out.remove('Sa')
-    if inp and out:
-      inpcopy = inp.copy()
-      output_strings = []
-      if 'Ea' in inpcopy and 'Ea' in annotation_dict:
-        inp = inpcopy.remove('Ea')
-        input_string = 'Ea:' + annotation_dict['Ea']
-      elif 'E' in inp:
-        inp = inpcopy.remove('E')
-        input_string = 'E:' + annotation_dict['E']
-      for more_slot in inpcopy:
-        if more_slot in annotation_dict:
-          text = " | ".join([str(x) for x in annotation_dict[more_slot]])
-          text = '[' + text + ']'
-          #input_string += "\n" + more_slot + ':' + str(annotation_dict[more_slot]) 
-          input_string += "\n" + more_slot + ':' + text
-      input_string += "\n"+"\n".join(out)
-      for output_slot in out:
-        if output_slot in annotation_dict:
-          if output_slot == 'S' or output_slot == 'Sa':
-            output_strings.append(output_slot + ":" + str(annotation_dict[output_slot]))
-            #output_string = output_slot + ":" + str(annotation_dict[output_slot])
-          else:
-            text = " | ".join([str(x) for x in annotation_dict[output_slot]])
+    if all(i in annotation_dict.keys() for i in (inp + out)):
+      if not in_place_annotation:
+        if 'Ea' in inp:
+          inp = inp.remove('Ea')
+        if 'Sa' in out:
+          out = out.remove('Sa')
+      if inp and out:
+        inpcopy = inp.copy()
+        output_strings = []
+        if 'Ea' in inpcopy and 'Ea' in annotation_dict:
+          inp = inpcopy.remove('Ea')
+          input_string = 'Ea:' + annotation_dict['Ea']
+        elif 'E' in inp:
+          inp = inpcopy.remove('E')
+          input_string = 'E:' + annotation_dict['E']
+        for more_slot in inpcopy:
+          if more_slot in annotation_dict:
+            text = " | ".join([str(x) for x in annotation_dict[more_slot]])
             text = '[' + text + ']'
-            output_strings.append(output_slot + ':' + text)
-      inputs.append(input_string)
-      outputs.append(output_strings)
+            #input_string += "\n" + more_slot + ':' + str(annotation_dict[more_slot]) 
+            input_string += "\n" + more_slot + ':' + text
+        input_string += "\n"+"\n".join(out)
+        for output_slot in out:
+          if output_slot in annotation_dict:
+            if output_slot == 'S' or output_slot == 'Sa':
+              output_strings.append(output_slot + ":" + str(annotation_dict[output_slot]))
+              #output_string = output_slot + ":" + str(annotation_dict[output_slot])
+            else:
+              text = " | ".join([str(x) for x in annotation_dict[output_slot]])
+              text = '[' + text + ']'
+              output_strings.append(output_slot + ':' + text)
+        print(input_string)
+        print(output_strings)
+        inputs.append(input_string)
+        outputs.append(output_strings)
 
   return inputs, outputs
 
@@ -663,39 +771,219 @@ def post_processing_single_angle(all_inputs, all_outputs, all_annotations, slots
       if key not in all_annotations[i]:
         all_annotations[i][key] = ['<extra_id_0>']
   return all_inputs, all_outputs, all_annotations, slots
+
+def post_processing_single_angle_only_S(all_inputs, all_outputs, all_annotations, slots, out='S', part_ea = True):
+  for i, _ in slots.items():
+    rand_val = random.random()
+    if part_ea and rand_val > 0.5:
+      all_inputs[i] = {'Ea'}
+      slots[i] = [(['Ea'], [out])]
+    else:
+      all_inputs[i] = {'E'}
+      slots[i] = [(['E'], [out])]
+    all_outputs[i] = {out}
+  return all_inputs, all_outputs, all_annotations, slots
+
+
+def test_eval(textpairs, annotation_dict, slots):
+  batch = []
+  for i in range(len(textpairs)):
+    inputs, outputs = get_training_data(annotation_dict[i], slots[i], in_place_annotation = True)
+    for input, output in zip(inputs, outputs):
+      #per angle for one example
+      batch.append((input, output))
+  return batch
+
+def multiangle_process(slots):
+  slot_types = ['R', 'X']
+  for slot in slot_types:
+      angleset = set()
+      save_slot = []
+      remove_slot = []
+      for val in slots:
+          rand_val = random.random()
+          #print('random: ', rand_val)
+          inp, out = val
+          #print('val:', val)
+          #print('angleset: ', angleset)
+          if slot in angleset:
+              #print('yes')
+              #print(inp, out)
+              if slot in inp:
+                  inp.remove(slot)
+              if slot in out:
+                  out.remove(slot)
+              #print([inp, out])
+          if slot in inp and slot not in angleset and slot not in out:
+              out += slot
+              angleset.add(slot)
+          elif slot in out and slot not in angleset and slot not in inp:
+              if rand_val>0.5:
+                  inp += slot
+              angleset.add(slot)
+          if val != [inp, out]:
+              remove_slot.append(val)
+              save_slot.append([inp, out])
+              
+      for x in list(remove_slot):
+          if x in slots:
+              slots.remove(x)
+      
+      for x in list(save_slot):
+          if x not in slots:
+              slots.append(x)
+              
+      #print(slots)
+      
+      
+  save_slot = []
+  remove_slot = []
+  d_inp = False
+  d_out = False
+  for val in slots:
+      rand_val = random.random()
+      #print('random: ', rand_val)
+      inp, out = val
+      #print('val:', val)
+      if 'D' in inp:
+        if rand_val > 0.5:
+          d_inp = True
+        else:
+          inp.remove('D')
+          out = ['D'] + out
+          d_out = True
+      if 'D' in inp and d_out:
+        inp.remove('D')
+        out = ['D'] + out
+      elif 'D' in out and d_inp:
+        out.remove('D')
+        inp += ['D']
+      
+      save_slot.append([inp, out])
+      remove_slot.append(val)
+      
+  for x in list(remove_slot):
+          if x in slots:
+              slots.remove(x)
+      
+  for x in list(save_slot):
+      if x not in slots:
+          slots.append(x)
+          
+          
+  save_slot = []
+  remove_slot = []        
+          
+  for val in slots:
+      inp, out = val
+      if 'I' in inp:
+          inp.remove('I')
+          remove_slot.append(val)
+          save_slot.append([inp, out])
+        
+  for x in list(remove_slot):
+          if x in slots:
+              slots.remove(x)
+      
+  for x in list(save_slot):
+      if x not in slots:
+          slots.append(x)
+                  
+  return slots
+
+
+def get_multiangle_data(slots, all_annotations):
+  angle_counter = defaultdict(int)
+  altered_slots = defaultdict(list)
+  for i, val in slots.items():
+    val = multiangle_process(val)
+    for v in val:
+      inp, out = v
+      if not 'Ea' in inp and not 'Sa' in out:
+        inp[1:] = sorted(inp[1:])
+        out.remove('S')
+        out.append('S')
+        out[:-1] = sorted(out[:-1])
+        if 'R' in inp:
+          idx = inp.index('R')
+          inp[idx] = 'Ri'
+          if 'Ri' not in all_annotations[i]:
+            all_annotations[i]['Ri'] = [x.split(' <by> ')[0] for x in all_annotations[i]['R']]
+        if 'X' in inp:
+          idx = inp.index('X')
+          inp[idx] = 'Xi'
+          if 'Xi' not in all_annotations[i]:
+            all_annotations[i]['Xi'] = [x.split(' <by> ')[0] for x in all_annotations[i]['X']]
+        angle = ''.join(inp) + '->' + ''.join(out)
+        angle_counter[angle] += 1
+        altered_slots[i].append([inp, out])
+        
+        
+  return angle_counter, all_annotations, altered_slots
+  
+
+  
     
 
 if __name__ == '__main__':
+    #test_Ea()
+  
+  
     
     # read the annotated data
     # remove the duplicated entries
     #take fraction of text data for testing
-    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/train_data.csv", encoding='unicode_escape', engine='python')
+    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/eval_data.csv", encoding='unicode_escape', engine='python')
     crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
     textpairs = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
-    textpairs = textpairs[:5]
+    #textpairs = textpairs[9:10]
     textpairs, all_inputs, all_outputs, all_annotations, slots = load_data(textpairs, eval=True, single_angle=True)
-    all_inputs, all_outputs, all_annotations, slots = post_processing_single_angle(all_inputs, all_outputs, all_annotations, slots, simplify=True)
+    #print(slots[:2])
+    all_inputs, all_outputs, all_annotations, slots = post_processing_single_angle_only_S(all_inputs, all_outputs, all_annotations, slots, out='Sa')
+    #angle_counter, all_annotations, altered_slots = get_multiangle_data(slots, all_annotations)
+    #print(altered_slots)
+    
 
-    print("Printing the final angles per example")
-    for i, val in slots.items():
-      print('\nexample #', i)
-      print('inputs: ', all_inputs[i])
-      print('outputs: ', all_outputs[i])
-      #print('annotations: ', all_annotations[i])
-      if 'R' in all_annotations[i]:
-        print('replacement: ', all_annotations[i]['R'])
-      if 'D' in all_annotations[i]:
-        print('deletion: ', all_annotations[i]['D'])
-      if 'X' in all_annotations[i]:
-        print('elaboration: ', all_annotations[i]['X'])
-      if 'I' in all_annotations[i]:
-        print('insertion: ', all_annotations[i]['I'])
-      if 'S' in all_annotations[i]:
-        print('simple text: ', all_annotations[i]['S'])
-      print(all_annotations[i]['Sa'])
-      for v in val:
-        print(slots[i])
-        inp, out = v
-        print("".join(inp)+'->'+"".join(out))
+    #print('There are {} eval data'.format(len(textpairs)))
+    #print(angle_counter)
+    #print('\n\n\n\n')
+    #print(all_annotations[0])
+    
+    print(slots[0])
+    
+    count = 0
+    for _, v in slots.items():
+      inp, out = v[0]
+      if 'Ea' in inp:
+        count += 1
         
+    print(count)
+     
+    '''
+    
+    batch = test_eval(textpairs, all_annotations, slots)
+    
+    count = 0
+    for annotation in all_annotations:
+      if 'Ea' in annotation and annotation['Ea'] == annotation['E']:
+        count += 1
+    
+    print(count)  
+    
+    print(len(batch))
+    
+    
+    for input, outputs in batch:
+      print('Input')
+      print(input, '\n')
+      print('Labels')
+      print(outputs, '\n')
+    '''
+    
+    
+    #crowdsourced_data.to_csv('processed_eval_data.csv', index = False)
+    
+    with open('./Datasets/annotated_data/eval_annotations_slots_single_angle.json', 'w') as f:
+      json.dump({'annotations': all_annotations, 'slots': slots}, f)
+      
+    
