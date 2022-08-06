@@ -198,10 +198,8 @@ def eval_loop(textpairs, model_dict, batch_size, epoch):
             true_outputs_parsed.append(res['true_output_text'])
             angles.append(res['angle'])
 
-        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(batch_size)'/dev/'
-        df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'True_outpu
-ts_parsed':true_outputs_parsed, 'Outputs_parsed':outputs_parsed, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Di
-ff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
+        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(batch_size)+'/dev/'
+        df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'True_outputs_parsed':true_outputs_parsed, 'Outputs_parsed':outputs_parsed, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
         df.to_csv(dir + 'part_files/eval_exc_EaSa_alt_input_format_single_angle_'+str(epoch)+'_batchno'+str(j)+'.csv', index=False)
         
     
