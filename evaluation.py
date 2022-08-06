@@ -133,23 +133,11 @@ def compute_diff(ar1, ar2):
         ratio.append(seq_mat.ratio())
         diff.append(get_replacement(output, gen))
     return diff, ratio
-        
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--chkpt', type = int, default = 1)
-    args = parser.parse_args()
-    model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/model_' + str(args.chkpt) + '.hf'
-    tokenizer_path = 't5-large'
-    model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
-    
-    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/dev_data.csv", encoding='unicode_escape', engine='python')
-    crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
-    textpairs = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
-    for j in range(0, len(textpairs), 5):
+def eval_loop(textpairs, model_dict, batch_size, epoch):
+    for j in range(0, len(textpairs), 4):
         print('running {} th batch'.format(j))
-        test_data = textpairs[j:j+5]
+        test_data = textpairs[j:j+4]
         print("There are {} eval text pairs".format(len(test_data)))
         test_pairs, all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = load_data(test_data, eval=True, single_angle=True)
         all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval = post_processing_single_angle(all_inputs_eval, all_outputs_eval, all_annotations_eval, slots_eval, simplify=True)
@@ -210,6 +198,30 @@ if __name__ == '__main__':
             true_outputs_parsed.append(res['true_output_text'])
             angles.append(res['angle'])
 
-        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/dev/'
-        df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'True_outputs_parsed':true_outputs_parsed, 'Outputs_parsed':outputs_parsed, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
-        df.to_csv(dir + 'part_files/eval_exc_EaSa_alt_input_format_single_angle_'+str(args.chkpt)+'_batchno'+str(j)+'.csv', index=False)        
+        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(batch_size)'/dev/'
+        df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'True_outpu
+ts_parsed':true_outputs_parsed, 'Outputs_parsed':outputs_parsed, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Di
+ff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
+        df.to_csv(dir + 'part_files/eval_exc_EaSa_alt_input_format_single_angle_'+str(epoch)+'_batchno'+str(j)+'.csv', index=False)
+        
+    
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--chkpt', type = int, default = 1)
+    parser.add_argument('--batch_size', type = int, default = 4)
+    parser.add_argument('--test', type = int, default = 2)
+    args = parser.parse_args()
+    tokenizer_path = 't5-large'
+    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/dev_data.csv", encoding='unicode_escape', engine='python')
+    crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
+    textpairs = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
+    if args.test == 1:
+        model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(args.batch_size)+'/model_' + str(args.chkpt) + '.hf'
+        model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
+        eval_loop(textpairs, model_dict, args.batch_size, args.chkpt)
+    else:
+        for chkpt in range(0, 30):
+            model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/e2rxdis/bs'+str(args.batch_size)+'/model_' + str(chkpt) + '.hf'
+            model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
+            eval_loop(textpairs, model_dict, args.batch_size, chkpt)
