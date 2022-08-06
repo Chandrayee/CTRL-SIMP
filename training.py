@@ -206,7 +206,7 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
                 epoch_loss += [overall_loss]
         average_loss = sum(epoch_loss)/len(epoch_loss)
         print('average loss for epoch # {}: {}'.format(epoch, average_loss))
-
+        '''
         eval_res = []
         eval_loss = 0.
         eval_data = get_eval_data(dev_pairs, slots_dev, all_annotations_dev, in_place_annotation=False)
@@ -218,7 +218,7 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
         eval_loss /= len(eval_data)
         print('average loss on eval data: {}'.format(eval_loss))
         data_per_batch['eval'] = {'eval_res': eval_res, 'eval_loss': eval_loss}
-        
+        '''
         with open(data_dir + '/result_for_epoch_'+str(epoch)+'.pkl', 'wb') as f:
            pickle.dump(data_per_batch, f)
         
