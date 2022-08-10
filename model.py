@@ -6,6 +6,7 @@ import random
 import torch
 import math
 from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import numpy as np
 import itertools
     
@@ -13,8 +14,16 @@ def load_model(model_name_or_path, tokenizer_path, cuda_devices=None):
   #suppose there are 13 layers
   #one_extra makes sure that the last layer gets added to the last gpu
   cuda_devices = cuda_devices or []
-  tokenizer = T5Tokenizer.from_pretrained(tokenizer_path)
-  model = T5ForConditionalGeneration.from_pretrained(model_name_or_path)
+  if tokenizer_path == 'sci5':
+    tokenizer = AutoTokenizer.from_pretrained("razent/SciFive-large-Pubmed_PMC")
+    #model_path = './models/sci5/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/bs4/model_14.hf'
+    #model = AutoModelForSeq2SeqLM.from_pretrained("razent/SciFive-large-Pubmed_PMC")
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+    print('running scifive model_14')
+  else:
+    tokenizer = T5Tokenizer.from_pretrained(tokenizer_path)
+    model = T5ForConditionalGeneration.from_pretrained(model_name_or_path)
+    print('running T5-large')
   device_map = None
   if len(cuda_devices) > 1:
     num_layers = model.config.num_layers

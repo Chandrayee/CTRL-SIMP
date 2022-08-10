@@ -12,6 +12,7 @@ import numpy as np
 from utils import GENERATOR_OPTIONS_DEFAULT
 import textwrap
 import argparse
+from transformers import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup
 
 tags = {'E->S': 1., 'Ea->Sa': 1., 'E->Sa': 1.}
 
@@ -35,7 +36,7 @@ def print_text(string, text_type = 'Input'):
     
 
 def train_model_with_outputs(model, tokenizer, cuda_device, training_pairs, eval_pairs, shuffle = True, in_place_annotation = True, one_slot = False, data_dir = None, num_epochs=20):
-    optimizer = torch.optim.AdamW(model.parameters(), lr=8e-6)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
     # overall_loss = torch.tensor(0.0, requires_grad=True).to(cuda_device)
     for epoch in range(num_epochs):
         epoch_loss = []
@@ -145,10 +146,12 @@ def test_merged_outputs(training_pairs, shuffle = True, in_place_annotation = Fa
         
         
         
-def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, dev_pairs, batch_size = 4, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=30):
+def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pairs, dev_pairs, batch_size = 4, shuffle = True, in_place_annotation = False, one_slot = False, data_dir = None, num_epochs=60):
     print("Running model with merged inputs")
-    optimizer = torch.optim.AdamW(model.parameters(), lr=8e-6)
-    for epoch in range(num_epochs):
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    #scheduler = get_constant_schedule_with_warmup(optimizer, num_warmup_steps=1700)
+    scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=11550)
+    for epoch in range(27,num_epochs):
         epoch_loss = []
         gen = batch_generator(training_pairs, slots_train, all_annotations_train, batch_size = batch_size, shuffle = shuffle, in_place_annotation = in_place_annotation, one_slot = one_slot)
         data_per_batch = defaultdict(dict)
@@ -203,6 +206,8 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
                 print('\nloss per batch: {}'.format(overall_loss))
                 print('\n\n=======================================')
                 optimizer.step()
+                scheduler.step()
+                print('\n\ncurrent lr: ', scheduler.get_last_lr()[-1])
                 epoch_loss += [overall_loss]
         average_loss = sum(epoch_loss)/len(epoch_loss)
         print('average loss for epoch # {}: {}'.format(epoch, average_loss))
@@ -232,7 +237,7 @@ def train_model_with_merged_outputs(model, tokenizer, cuda_device, training_pair
             'loss': average_loss,
             }, PATH)'''
 
-        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/bs'+str(batch_size)+'/model_'+str(epoch)+'.hf')
+        model.save_pretrained('./models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/longer_training/bs'+str(batch_size)+'/model_'+str(epoch)+'.hf')
         
 def print_data(all_inputs, all_outputs, all_annotations, slots):
     for i, val in slots.items():
@@ -315,8 +320,9 @@ if __name__ == '__main__':
     print("There are {} training text pairs".format(len(training_data)))
     print("There are {} dev text pairs".format(len(dev_data)))
     
-    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/bs'+str(args.batch_size)+'/train'
-    model_dict = load_model(model_name_or_path="t5-large", tokenizer_path="t5-large", cuda_devices = [0, 1])
+    DEFAULT_RESULTS_DIR = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/longer_training/bs'+str(args.batch_size)+'/train'
+    model_dir = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/longer_training/bs4/model_26.hf'
+    model_dict = load_model(model_name_or_path=model_dir, tokenizer_path="t5-large", cuda_devices = [0, 1])
 
     #test_merged_outputs(training_data)
     
