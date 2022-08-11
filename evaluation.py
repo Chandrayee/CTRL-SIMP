@@ -191,7 +191,7 @@ def eval_loop(textpairs, test_data, batch_size, chkpt, model_dict):
                 outputs_parsed.append(raw_generated)
                 true_outputs_parsed.append(res['true_output_text'])
                 angles.append(res['angle'])
-        dir = './results/sci5/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/bs'+str(batch_size)+'/dev/'
+        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/longer_training/bs'+str(batch_size)+'/test/'
         df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'True_outputs_parsed':true_outputs_parsed, 'Outputs_parsed':outputs_parsed, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp, 'Expert': expert, 'Simple':simple})
         df.to_csv(dir + 'part_files/eval_exc_EaSa_alt_input_format_single_angle_'+str(chkpt)+'_batchno'+str(j)+'.csv', index=False)
         
@@ -203,26 +203,26 @@ if __name__ == '__main__':
     parser.add_argument('--test', type = int, default = 1)
     parser.add_argument('--batch_size', type  =int, default = 32)
     args = parser.parse_args()
-    #tokenizer_path = 't5-large'
-    tokenizer_path = 'sci5'
+    tokenizer_path = 't5-large'
+    #tokenizer_path = 'sci5'
     #crowdsourced_data = pd.read_csv("./Datasets/annotated_data/dev_data.csv", encoding='unicode_escape', engine='python')
     #crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
-    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/processed_dev_data.csv")
+    crowdsourced_data = pd.read_csv("./Datasets/annotated_data/processed_eval_data.csv")
     textpairs = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
     
-    with open('./Datasets/annotated_data/dev_annotations_slots_single_angle.json', 'r') as f:
+    with open('./Datasets/annotated_data/eval_annotations_slots_single_angle.json', 'r') as f:
         dev_dict = json.load(f)
     all_annotations_dev = dev_dict['annotations']
     slots_dev = dev_dict['slots']
     slots_dev = {int(k):v for k, v in slots_dev.items()}
     test_data = get_eval_data(textpairs, slots_dev, all_annotations_dev, in_place_annotation=True)
     if args.test == 1:
-        model_path = './models/sci5/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/bs'+str(args.batch_size) +'/model_' + str(args.chkpt) + '.hf'
+        model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/longer_training/bs'+str(args.batch_size) +'/model_' + str(args.chkpt) + '.hf'
         model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
         eval_loop(textpairs, test_data, args.batch_size, args.chkpt, model_dict)
     else:
-        for chkpt in range(1, 30):
-            model_path = './models/sci5/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/bs'+str(args.batch_size)+'/model_' + str(chkpt) + '.hf'
+        for chkpt in range(0, 60):
+            model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format_single_angle/ea2sa/longer_training/bs'+str(args.batch_size)+'/model_' + str(chkpt) + '.hf'
             print(model_path)
             model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
             eval_loop(textpairs, test_data, args.batch_size, chkpt, model_dict)
