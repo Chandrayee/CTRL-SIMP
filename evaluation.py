@@ -15,8 +15,8 @@ import textwrap
 from rouge_score import rouge_scorer
 import difflib
 
-GENERATOR_OPTIONS_DEFAULT = {"min_length": 1, "max_length": 128, "num_beams": 10, "num_return_sequences": 1,
-                             "do_sample": False, "top_k": 0, "top_p": 0.9, "temperature": 1.0,
+GENERATOR_OPTIONS_DEFAULT = {"min_length": 1, "max_length": 128, "num_return_sequences": 1,
+                             "do_sample": True, "top_k": 0, "top_p": 0.9, "temperature": 0.8,
                              "length_penalty": 1.0, "repetition_penalty": 1.0}
 
 def run_evaluation(eval_data, model_dict):
@@ -185,7 +185,7 @@ def eval_loop(test_data, chkpt, model_dict):
                 outputs_parsed.append(raw_generated)
                 true_outputs_parsed.append(res['true_output_text'])
                 angles.append(res['angle'])
-        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format/multiangle/unannotated/dev/'
+        dir = './results/t5_large/merged_outputs/exc_EaSa_alt_input_format/multiangle/unannotated/test_sampling/'
         df = pd.DataFrame({'Input':inputs, 'Angle': angles, 'True_outputs':true_outputs, 'Outputs':outputs, 'True_outputs_parsed':true_outputs_parsed, 'Outputs_parsed':outputs_parsed, 'Rouge':metrics_rouge, 'Diff_w_true':metrics_diff, 'Diff_w_input':diff_raw_exp, 'Sim_w_true_all':ratio_metrics_diff, 'Sim_w_true': [x[-1] for x in ratio_metrics_diff], 'Sim_w_input':ratio_raw_exp})
         df.to_csv(dir + 'part_files/eval_exc_EaSa_alt_input_format_'+str(chkpt)+'_batchno'+str(j)+'.csv', index=False)
         
@@ -200,16 +200,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
     tokenizer_path = 't5-large'
     if args.multiangle:
-        dev_file = pd.read_csv("./Datasets/annotated_data/processed_dev_data.csv")
+        dev_file = pd.read_csv("./Datasets/annotated_data/processed_eval_data.csv")
         dev_data = [[x,y,z] for x,y,z in zip(dev_file['Expert'], dev_file['Simple'], dev_file['Annotation'])]
-        with open('./Datasets/annotated_data/dev_annotations_slots.json', 'r') as f:
+        with open('./Datasets/annotated_data/eval_annotations_slots.json', 'r') as f:
             dev_dict = json.load(f)
             all_annotations_dev = dev_dict['annotations']
             slots_dev = dev_dict['slots']
             slots_dev = [v for k, v in slots_dev.items()]
         
     else:
-        crowdsourced_data = pd.read_csv("./Datasets/annotated_data/dev_data.csv", encoding='unicode_escape', engine='python')
+        crowdsourced_data = pd.read_csv("./Datasets/annotated_data/eval_data.csv", encoding='unicode_escape', engine='python')
         crowdsourced_data = crowdsourced_data.drop_duplicates( subset = ['Expert', 'Simple'], keep = 'last').reset_index(drop = True)
         dev_data = [[x,y,z] for x,y,z in zip(crowdsourced_data['Expert'], crowdsourced_data['Simple'], crowdsourced_data['Annotation'])]
     print('dev data: ', len(dev_data))
@@ -217,6 +217,7 @@ if __name__ == '__main__':
     print('processed model input: ', len(processed_dev_data))
     if args.test == 1:
         model_path = './models/t5_large/merged_outputs/exc_EaSa_alt_input_format/multiangle/unannotated/bs'+str(args.batch_size) +'/model_' + str(args.chkpt) + '.hf'
+        print('model: ', model_path)
         model_dict = load_model(model_name_or_path=model_path, tokenizer_path = tokenizer_path, cuda_devices = [0, 1])
         eval_loop(processed_dev_data, args.chkpt, model_dict)
     else:
