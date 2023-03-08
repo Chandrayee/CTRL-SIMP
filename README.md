@@ -21,7 +21,9 @@ Model arguments:
 The evaluation functions are in model.py.
 
 ## Dataset
-To use the dataset from Huggingface use do the following:
+The dataset is available at https://huggingface.co/datasets/cbasu/Med-EASi
+
+To use the dataset from Huggingface datasets library do the following:
 
 ```
 from datasets import load_dataset
