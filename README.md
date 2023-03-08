@@ -23,10 +23,12 @@ The evaluation functions are in model.py.
 ## Dataset
 To use the dataset from Huggingface use do the following:
 
-```from datasets import load_dataset
-dataset = load_dataset("cbasu/Med-EASi")```
+```
+from datasets import load_dataset
+dataset = load_dataset("cbasu/Med-EASi")
+```
 
 OR
 
-```git lfs install
-git clone https://huggingface.co/datasets/cbasu/Med-EASi```
+git lfs install
+git clone https://huggingface.co/datasets/cbasu/Med-EASi
