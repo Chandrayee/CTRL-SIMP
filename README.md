@@ -1,11 +1,12 @@
 # CTRL-SIMP
 
-CTRL (Controllable) SIMP (Text simplification) is medical text simplification model that enables users to identify words or phrases within the medical text that they find difficult and would like to be removed, replaced or elaborated. The model is released with the first ever medical dataset with fine-grained annotations of elaboration, replacement, deletion and insertion. The model is trained in a multi-angle fashion like MACAW (https://github.com/allenai/macaw), so that, in addition to simplifying the medical text and can also separately predict the words that are difficult foe people to understand. 
+This repo contains the Med-EASi dataset and models for controllable medical text simplification. The models are released with the first ever medical dataset with fine-grained annotations of elaboration, replacement, deletion and insertion. The model is trained in a multi-angle fashion like MACAW (https://github.com/allenai/macaw), so that, in addition to simplifying the medical text and can also separately predict the content of the expert text that are likely to be difficult for people to understand. 
 
-CTRL-SIMP is built on top of T5, similar to MACAW. Unlike MACAW the training data has both inputs split into slots and inputs with inplace annotations.
-
-The model was trained with python version 3.8.10 and torch 1.10 (cu-11.3). The data is uploaded in google drive Toloka/annotated_data. 
-The model using T5-large was trained on two CUDA devices (GeForce RX 3080 each) and with T5-small was trained on one CUDA device.
+## Models
+We add two types of controllability into text simplification, by using a multi-angle training approach. 
+- **CTRL-SIM_ip: position-aware**
+- **CTRL-SIM: position-agnostic**
+The models are trained with python version 3.8.10 and torch 1.10 (cu-11.3). The model using T5-large was trained on two CUDA devices (GeForce RX 3080 each).
 
 To train the model:
 * make appropriate changes to the data path, model path and CUDA devices
@@ -18,3 +19,14 @@ Model arguments:
 * --shuffle: bool, default = True, shuffle training data to avoid the same examples in one batch
 
 The evaluation functions are in model.py.
+
+## Dataset
+To use the dataset from Huggingface use do the following:
+
+```from datasets import load_dataset
+dataset = load_dataset("cbasu/Med-EASi")```
+
+OR
+
+```git lfs install
+git clone https://huggingface.co/datasets/cbasu/Med-EASi```
