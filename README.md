@@ -4,8 +4,8 @@ This repo contains the Med-EASi dataset and models for controllable medical text
 
 ## Models
 We add two types of controllability into text simplification, by using a multi-angle training approach. 
-- **$CTRL-SIM_{ip}: position-aware$**
-- **CTRL-SIM: position-agnostic**
+- **$CTRL-SIM_{ip}$: position-aware**
+- **$CTRL-SIM$: position-agnostic**
 
 The models are trained with python version 3.8.10 and torch 1.10 (cu-11.3). The model using T5-large was trained on two CUDA devices (GeForce RX 3080 each).
 
