@@ -30,5 +30,7 @@ dataset = load_dataset("cbasu/Med-EASi")
 
 OR
 
+```
 git lfs install
 git clone https://huggingface.co/datasets/cbasu/Med-EASi
+```
