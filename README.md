@@ -1,11 +1,12 @@
 # CTRL-SIMP
 
-This repo contains the Med-EASi dataset and models for controllable medical text simplification. The models are released with the first ever medical dataset with fine-grained annotations of elaboration, replacement, deletion and insertion. The model is trained in a multi-angle fashion like MACAW (https://github.com/allenai/macaw), so that, in addition to simplifying the medical text and can also separately predict the content of the expert text that are likely to be difficult for people to understand. 
+This repo contains the Med-EASi (Medical dataset for Elaborative and Abstractive
+Simplification) dataset and models for controllable medical text simplification. 
 
 ## Models
-We add two types of controllability into text simplification, by using a multi-angle training approach. 
-- **$CTRL-SIM_{ip}$: position-aware**
-- **$CTRL-SIM$: position-agnostic**
+We finetune T5-large with a combination of prompting and in filling to add two types of controllability into text simplification. 
+- **$CTRL-SIM_{ip}$: position-aware, where label=annotated data**
+- **$CTRL-SIM$: position-agnostic, where label=content of the expert text that must be edited, type of edit and the unannotated simple text**
 
 The models are trained with python version 3.8.10 and torch 1.10 (cu-11.3). The model using T5-large was trained on two CUDA devices (GeForce RX 3080 each).
 
@@ -37,3 +38,14 @@ OR
 git lfs install
 git clone https://huggingface.co/datasets/cbasu/Med-EASi
 ```
+
+## Citation
+```
+@article{basu2023med,
+  title={Med-EASi: Finely Annotated Dataset and Models for Controllable Simplification of Medical Texts},
+  author={Basu, Chandrayee and Vasu, Rosni and Yasunaga, Michihiro and Yang, Qian},
+  journal={arXiv preprint arXiv:2302.09155},
+  year={2023}
+}
+```
+
