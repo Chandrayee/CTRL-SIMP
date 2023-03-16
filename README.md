@@ -6,7 +6,7 @@ Simplification) dataset and models for controllable medical text simplification.
 ## Overview
 MedEASi is a uniquely crowdsourced and finely annotated dataset for supervised simplification of short medical
 texts. Its expert-layman-AI collaborative annotations facilitate controllability over text simplification by marking four
-kinds of textual transformations: elaboration, replacement, deletion, and insertion. Med-EASi contains diverse training pairs, each with a different set of textual transformations. We also introduce two T5-large based models for controllable simplification. The models are trained using heterogeneous task descriptions, called multi-angle training, where each input and output are written as a combination of slots, similar to [MACAW] (https://arxiv.org/abs/2109.02593). 
+kinds of textual transformations: elaboration, replacement, deletion, and insertion. Med-EASi contains diverse training pairs, each with a different set of textual transformations. We also introduce two T5-large based models for controllable simplification. The models are trained using heterogeneous task descriptions, called multi-angle training, where each input and output are written as a combination of slots, similar to [MACAW]. 
 
 ## Models
 We finetune T5-large with a combination of prompting and in filling to add two types of controllability into text simplification. 
